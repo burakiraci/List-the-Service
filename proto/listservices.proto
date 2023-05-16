@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package servicecheck;
+import "google/protobuf/empty.proto";
+
+service Registry {
+    rpc Register(Service) returns (RegistryResponse) {}
+    rpc Deregister(ServiceQ) returns (RegistryResponse) {}
+    rpc ListServices(ListRequest) returns (ListResponse) {}
+
+    rpc ListenService(ListenQ) returns (ListenResponse) {}
+
+    rpc AddNode(NodeRequest) returns (NodeResponse) {};
+    rpc ListNodes(google.protobuf.Empty) returns (ListNodesResponse) {};
+    rpc WatchNode(stream NodeInfo) returns (stream NodeInfo) {};
+}
+
+message Service {
+    string serviceUUID = 1;
+    string name = 2;
+    map<string, Endpoint> endpoints = 3;
+    Options opts = 4;
+    map<string, string> meta = 5;
+    repeated string tags = 6;
+    map<string, Endpoint> wanEndpoints = 7;
+    NodeQ node = 8; // this value will assign after registery operation. Do not set.
+    ServiceStatus status = 9;
+}
+
+message NodeQ {
+    string name = 1;
+    string nodeUUID = 2;
+}
+
+message ListenQ {
+    ServiceQ sq = 1;
+    ServiceStatus status = 2;
+    Service service = 3; // optional
+}
+
+message ListenResponse {
+    ListenServiceState state = 1;
+}
+
+enum ListenServiceState {
+    SERVICE_OK = 0;
+    SERVICE_FAIL = 1;
+}
+
+message ServiceQ {
+    string serviceUUID = 1;
+}
+
+message Endpoint {
+    string ipAddress = 1;
+    int32 port = 2;
+}
+
+message Node {
+    string nodeID = 1;
+    string nodeName = 2;
+    Endpoint nodeEndpoint = 3;
+}
+
+message RegistryResponse {
+    int32 timeout = 1;
+    string serviceUUID = 2;
+}
+
+message WatchRequest {
+    string serviceUUID = 1;
+    ServiceStatus status = 2;
+    // TODO: add status
+}
+
+message ServiceStatus {
+    int32 errorCode = 1;
+    map<string, string> metadata = 2;
+}
+
+message WatchResponse {
+    int64 timestamp = 1;
+}
+
+message Options {
+    string filter = 1;
+}
+
+message NVRQuery {
+
+    message Camera {
+        string camid = 1;
+        string rstream = 2;
+        string appname = 3;
+    }
+
+    message CameraLocation {
+        string group = 1;
+        string location = 2;
+    }
+
+    message CustomServices {
+        string name = 1;
+    }
+
+    message ServiceSelector {
+        string name = 1;
+        string node = 2;
+        repeated string tags = 3;
+        map<string, string> metas = 4;
+        string id = 5;
+    }
+
+    oneof query {
+        Camera c = 101;
+        CustomServices customapp = 102;
+        CameraLocation cl = 103;
+        ServiceSelector ss = 104;
+    }
+
+}
+
+message ListRequest {
+    string serviceUUID = 1;
+    NVRQuery query = 2;
+}
+
+message ListResponse {
+    repeated Service services = 1;
+}
+
+enum NodeHardwareType {
+    STD = 0;
+    NVIDIA = 1;
+    ROCKCHIP = 2;
+    JETSON = 4;
+    HAILO = 8;
+}
+
+message NodeRequest {
+    NodeQ node = 1;
+    Endpoint endpoint = 2;
+    NodeHardwareType nodeType = 3;
+}
+
+message NodeResponse {
+
+}
+
+message ListNodesResponse {
+    repeated NodeRequest nodes = 1;
+}
+
+message NodeInfo {
+    repeated Service services = 1;
+    NodeQ node = 2;
+}
