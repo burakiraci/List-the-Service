@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
 	QApplication a(argc, argv);
 	Form w;
 	w.show();
-	std::string target = "10.5.176.243:3456";
+	std::string target = "10.5.192.140:3456";
 //	ServiceCheck client (grpc::CreateChannel(target,grpc::InsecureChannelCredentials()));
 //	client.ListServices();
 	return a.exec();

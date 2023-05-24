@@ -35,7 +35,7 @@ public:
 	explicit Form(QWidget *parent = nullptr);
 	~Form();
 	Ui::Form *ui;
-
+	ListResponse response;
 private slots:
 
 
@@ -44,24 +44,53 @@ private slots:
 
 	void on_listWidget_name_currentRowChanged(int currentRow);
 
-	void on_pushButton_clicked();
 
-	void on_listWidget_nodesName_currentRowChanged(int currentRow);
-
-	void on_pushButton_Tags_clicked();
-
-	//	void on_pushButton_meta_clicked();
 
 	void on_lineEdit_services_editingFinished();
 
 	void on_listWidget_uuid_currentRowChanged(int currentRow);
 
-	void on_pushButton_meta_clicked();
+
+
+	void on_lineEdit_connect_editingFinished();
+
+	void processform();
+//	void on_comboBox_currentIndexChanged(int index);
+
+	void on_comboBox_activated(int index);
+
+	void on_listWidget_meta_currentRowChanged(int currentRow);
+
+	void on_listWidget_tag_currentRowChanged(int currentRow);
+	void applyFilters();
+
+	void on_listWidget_ep_currentRowChanged(int currentRow);
+
+	void write_ipaddress();
+
+	void take_ipaddress();
+
+
+	void on_comboBox_ip_currentTextChanged(const QString &arg1);
+
+	void on_listWidget_meta_itemDoubleClicked(QListWidgetItem *item);
+
+	void on_listWidget_tag_itemDoubleClicked(QListWidgetItem *item);
+
+	void on_listWidget_ep_itemDoubleClicked(QListWidgetItem *item);
+
+signals:
+	void updateform();
 
 private:
+	std::map<std::string, servicecheck::Service> allservices;
+	std::map<std::string, servicecheck::Service> filteredService;
+	std::map<std::string, servicecheck::Service> errorService;
 	std::unique_ptr<servicecheck::Registry::Stub> stub_;
-	std::map<std::string, std::map<std::string, std::string>> devices_map;
-	std::string target = "10.5.176.243:3456";
+//	std::string target = "10.5.190.206:3456";
+	std::string target = "";
+	void filterServices(QString s);
+
 };
 
 #endif // FORM_H

@@ -24,54 +24,64 @@
        <string>Service</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="4" column="1">
+       <item row="11" column="2">
+        <widget class="QTextEdit" name="textEdit_state">
+         <property name="maximumSize">
+          <size>
+           <width>250</width>
+           <height>50</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="3">
+        <widget class="QComboBox" name="comboBox"/>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>IP Address</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="4">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Tag</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="4" rowspan="2" colspan="2">
+        <widget class="QPushButton" name="pushButtonListServices">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>90</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>List the Services</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="5" rowspan="3">
+        <widget class="QListWidget" name="listWidget_ep">
+         <property name="maximumSize">
+          <size>
+           <width>210</width>
+           <height>16777215</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
         <widget class="QLabel" name="label_2">
          <property name="text">
           <string>Service Names</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="3" rowspan="4">
-        <widget class="QTextEdit" name="textEdit_meta">
-         <property name="maximumSize">
-          <size>
-           <width>500</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="markdown">
-          <string/>
-         </property>
-         <property name="html">
-          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-hr { height: 1px; border-width: 0; }
-li.unchecked::marker { content: &quot;\2610&quot;; }
-li.checked::marker { content: &quot;\2612&quot;; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="overwriteMode">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2" colspan="2">
-        <widget class="QLineEdit" name="lineEdit_services">
-         <property name="inputMask">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QPushButton" name="pushButtonListServices">
-         <property name="text">
-          <string>List the Services</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="2" rowspan="4">
+       <item row="7" column="2" rowspan="4">
         <widget class="QListWidget" name="listWidget_uuid">
          <property name="maximumSize">
           <size>
@@ -81,25 +91,38 @@ li.checked::marker { content: &quot;\2612&quot;; }
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
-        <widget class="QListWidget" name="listWidget_name">
+       <item row="3" column="2">
+        <widget class="QLineEdit" name="lineEdit_services">
+         <property name="inputMask">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QLineEdit" name="lineEdit_connect">
          <property name="maximumSize">
           <size>
-           <width>150</width>
-           <height>250</height>
+           <width>16777215</width>
+           <height>16777215</height>
           </size>
          </property>
         </widget>
        </item>
-       <item row="1" column="4">
-        <widget class="QPushButton" name="pushButton_Tags">
-         <property name="text">
-          <string>List the Tags</string>
+       <item row="7" column="3" rowspan="3">
+        <widget class="QListWidget" name="listWidget_meta">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
+          </size>
          </property>
         </widget>
        </item>
-       <item row="5" column="4" rowspan="4">
-        <widget class="QTextEdit" name="textEdit_tag">
+       <item row="2" column="3">
+        <widget class="QComboBox" name="comboBox_ip"/>
+       </item>
+       <item row="7" column="4" rowspan="3">
+        <widget class="QListWidget" name="listWidget_tag">
          <property name="maximumSize">
           <size>
            <width>150</width>
@@ -108,52 +131,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          </property>
         </widget>
        </item>
-       <item row="1" column="3">
-        <widget class="QPushButton" name="pushButton_meta">
-         <property name="text">
-          <string>List the Meta</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Node Names</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QPushButton" name="pushButton">
-         <property name="text">
-          <string>List the Nodes</string>
-         </property>
-        </widget>
-       </item>
-       <item row="8" column="1">
-        <widget class="QListWidget" name="listWidget_nodesName">
-         <property name="maximumSize">
-          <size>
-           <width>150</width>
-           <height>100</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="4">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Tag</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="3">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Features</string>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="1">
+       <item row="11" column="1">
         <widget class="QLCDNumber" name="lcdNumber">
          <property name="font">
           <font>
@@ -163,8 +141,46 @@ li.checked::marker { content: &quot;\2612&quot;; }
          </property>
         </widget>
        </item>
-       <item row="9" column="2">
-        <widget class="QTextEdit" name="textEdit_Endpoint">
+       <item row="7" column="1">
+        <widget class="QListWidget" name="listWidget_name">
+         <property name="maximumSize">
+          <size>
+           <width>150</width>
+           <height>250</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="2">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>UUID</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Filter</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="3">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Features</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="5">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Endpoints</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="3">
+        <widget class="QTextEdit" name="textEdit_status">
          <property name="maximumSize">
           <size>
            <width>250</width>
@@ -179,14 +195,31 @@ hr { height: 1px; border-width: 0; }
 li.unchecked::marker { content: &quot;\2610&quot;; }
 li.checked::marker { content: &quot;\2612&quot;; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Endpoint : &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="2">
-        <widget class="QLabel" name="label">
+       <item row="9" column="1">
+        <widget class="QTextEdit" name="textEdit_nodename">
+         <property name="maximumSize">
+          <size>
+           <width>150</width>
+           <height>150</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>UUID</string>
+          <string>Node Names</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="5">
+        <widget class="QLabel" name="label_status">
+         <property name="text">
+          <string/>
          </property>
         </widget>
        </item>

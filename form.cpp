@@ -1,9 +1,10 @@
+#include <fstream>
 #include "form.h"
 #include "ui_form.h"
 #include <QFontComboBox>
 #include <QDebug>
-
-
+#include <QSet>
+#include <QClipboard>
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
@@ -18,6 +19,10 @@ Form::Form(QWidget *parent) :
 	ui(new Ui::Form)
 {
 	ui->setupUi(this);
+
+	connect(this, &Form::updateform, this, &Form::processform);
+	write_ipaddress();
+	take_ipaddress();
 }
 
 Form::~Form()
@@ -25,57 +30,32 @@ Form::~Form()
 	delete ui;
 }
 
-class ServiceCheck {
-public:
-	ServiceCheck(Form* f) : form_(f) {}
-
-	void allService(const ListResponse& response) {
-		QStringList names;
-		for (const servicecheck::Service& service : response.services()) {
-			for(auto it = service.endpoints().begin(); it != service.endpoints().end(); it++){
-				std::string endp = it->first;
-				form_->ui->textEdit_Endpoint->setText(QString::fromStdString(endp));
-			}
-
-			QString name = QString::fromStdString(service.name());
-
-			if (!names.contains(name)) {
-				form_->ui->listWidget_name->addItem(name);
-				names.append(name);
-			}
-
-
-		}
-	}
-
-	void nodes(const ListResponse& response) {
-		ListRequest request;
-		ClientContext context;
-		QStringList nodes ;
-		for(const servicecheck::Service& service : response.services()){
-			QString nodeName = QString::fromStdString(service.node().name());
-			if(!nodes.contains(nodeName)){
-				form_->ui->listWidget_nodesName->addItem(nodeName);
-				nodes.append(nodeName);
-			}
-		}
-	}
-
-private:
-	Form* form_;
-};
-
 void Form::on_pushButtonListServices_clicked() {
+	take_ipaddress();
 	ListRequest request;
 	ClientContext context;
 	ListResponse response;
+	QStringList nodes ;
 	ui->listWidget_name->clear();
+	ui->label_status->setText("Connecting....");
 	auto channel = grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
 	auto stub = Registry::NewStub(channel);
+	auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(4000);
+	context.set_deadline(deadline);
 	Status status = stub->ListServices(&context, request, &response);
+	allservices.clear();
+	if (status.ok()) {
+		ui->label_status->setText("Connected");
+	} else {
+		ui->label_status->setText(QString::fromStdString(status.error_message()));
+		return;
+	}
 
-	ServiceCheck client(this);
-	client.allService(response);
+	for(const auto& service : response.services()){
+		allservices[service.serviceuuid()] = service;
+	}
+	ui->lcdNumber->display((int)allservices.size());
+	emit this->updateform();
 }
 
 
@@ -83,250 +63,409 @@ void Form::on_pushButtonListServices_clicked() {
 void Form::on_listWidget_name_currentRowChanged(int currentRow)
 {
 	ui->listWidget_uuid->clear();
-	auto channel = grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
-	auto stub = Registry::NewStub(channel);
-	ListRequest request;
-	ClientContext context;
-	ListResponse response;
-	QString search_key = ui->lineEdit_services->text();
-	Status status = stub->ListServices(&context, request, &response);
-	int count = 0;
-	QListWidgetItem *item = ui->listWidget_name->currentItem();
+	ui->listWidget_meta->clear();
+	ui->listWidget_tag->clear();
+	ui->listWidget_ep->clear();
+	QListWidgetItem* item = ui->listWidget_name->currentItem();
 	if (item != nullptr) {
 		QString serviceName = item->text();
-		for (const servicecheck::Service& service : response.services()) {
-			QString uuids = QString::fromStdString(service.serviceuuid());
-			if (QString::fromStdString(service.name()) == serviceName) {
-				std::string uuid = service.serviceuuid();
-				bool found_key = false;
-				for (auto it = service.meta().begin(); it != service.meta().end(); ++it) {
-					std::string key = it->first;
-					std::string value = it->second;
-					if (devices_map.find(uuid) == devices_map.end()) {
-						devices_map[uuid] = std::map<std::string, std::string>();
-					}
-					devices_map[uuid][key] = value;
-					if (QString::fromStdString(value).contains(search_key, Qt::CaseInsensitive)) {
-						found_key = true;
-					}
-				}
-				for (auto it = service.tags().begin(); it != service.tags().end(); it++) {
-					for (auto ite = it->begin(); ite != it->end(); ite++) {
-						std::string tag = ite.base();
-						if (devices_map.find(uuid) == devices_map.end()) {
-							devices_map[uuid] = std::map<std::string, std::string>();
-						}
-						devices_map[uuid]["tag"] = tag;
-						if (QString::fromStdString(tag).contains(search_key, Qt::CaseInsensitive)) {
-							found_key = true;
-						}
-						break;
-					}
-				}
-				if (found_key) {
-					count++;
-					ui->listWidget_uuid->addItem(uuids);
-					ui->lcdNumber->display(count);
-				}
+		int count = 0;
+		for (const auto& service : filteredService) {
+			if (QString::fromStdString(service.second.name()) == serviceName) {
+				QString uuid = QString::fromStdString(service.first);
+				ui->listWidget_uuid->addItem(uuid);
+				count++;
 			}
+			ui->lcdNumber->display(count);
 		}
 	}
 }
-
-void Form::on_pushButton_clicked()
-{
-	ui->listWidget_nodesName->clear();
-	auto channel = grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
-	auto stub = Registry::NewStub(channel);
-	ListRequest request;
-	ClientContext context;
-	ListResponse response;
-	Status status = stub->ListServices(&context, request, &response);
-
-	ServiceCheck client(this);
-	client.nodes(response);
-}
-
-
-void Form::on_listWidget_nodesName_currentRowChanged(int currentRow)
-{
-	auto channel = grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
-	auto stub = Registry::NewStub(channel);
-	ListRequest request;
-	ClientContext context;
-	ListResponse response;
-	QStringList nodess;
-	int count = 0;
-	Status status = stub->ListServices(&context, request, &response);
-	ui->listWidget_uuid->clear();
-	QListWidgetItem *item = ui->listWidget_nodesName->currentItem();
-	if( item != nullptr){
-		QString nodeName = item->text();
-		for(const servicecheck::Service& service: response.services()){
-			QString uuids = QString::fromStdString(service.node().nodeuuid());
-			if(QString::fromStdString(service.node().name()) == nodeName) {
-				if(!nodess.contains(uuids)){
-					nodess.append(uuids);
-					count++;
-					ui->listWidget_uuid->addItem(uuids);
-					ui->lcdNumber->display(count);
-				}
-			}
-		}
-	}
-}
-
-
-void Form::on_pushButton_Tags_clicked()
-{
-	auto channel = grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
-	auto stub = Registry::NewStub(channel);
-	QStringList tags;
-	ListRequest request;
-	ClientContext context;
-	ListResponse response;
-	int count = 0;
-	Status status = stub->ListServices(&context, request, &response);
-	for(const servicecheck::Service& service: response.services()){
-		for (auto it = service.tags().begin(); it != service.tags().end(); it++){
-			for(auto ite = it->begin(); ite != it->end(); ite++){
-				QString tag = QString::fromStdString(ite.base());
-				if(!tags.contains(tag)){
-					count++;
-					ui->textEdit_tag->append(tag);
-					tags.append(tag);
-					ui->lcdNumber->display(count);
-
-				}
-				break;
-			}
-		}
-	}
-}
-
-
 
 void Form::on_lineEdit_services_editingFinished()
 {
 	ui->listWidget_uuid->clear();
-	ui->textEdit_meta->clear();
-	ui->textEdit_tag->clear();
+	ui->listWidget_meta->clear();
+	ui->listWidget_tag->clear();
 	ui->listWidget_name->clear();
-
-	auto channel = grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
-	auto stub = Registry::NewStub(channel);
-
-	ListRequest request;
-	ListResponse response;
-	ClientContext context;
-	Status status = stub->ListServices(&context, request, &response);
-
+	ui->listWidget_ep->clear();
+	int count = 0;
 	QString search_key = ui->lineEdit_services->text();
 
-	std::map<std::string, std::vector<std::string>> names_to_uuids;
+	QStringList keywords = search_key.split('&');
 
-	for (const servicecheck::Service& service : response.services()) {
-		std::string uuid = service.serviceuuid();
-		std::string name = service.name();
+	for (const auto& service : filteredService) {
+		std::string uuid = service.first;
+		std::string name = service.second.name();
 
-		bool has_key = QString::fromStdString(name).contains(search_key, Qt::CaseInsensitive);
+		bool has_keywords = true;
 
-		if (!has_key) {
-			for (auto it = service.meta().begin(); it != service.meta().end(); ++it) {
-				std::string key = it->first;
-				std::string value = it->second;
-
-				has_key = QString::fromStdString(value).contains(search_key, Qt::CaseInsensitive);
-				if (has_key) {
-					break;
-				}
-			}
+		for (const QString& keyword : keywords) {
+			bool has_key = QString::fromStdString(name).contains(keyword, Qt::CaseInsensitive);
 
 			if (!has_key) {
-				for (auto it = service.tags().begin(); it != service.tags().end(); it++){
-					for (auto ite = it->begin(); ite != it->end(); ite++){
-						std::string tag = ite.base();
+				for (auto it = service.second.meta().begin(); it != service.second.meta().end(); ++it) {
+					std::string key = it->first;
+					std::string value = it->second;
 
-						has_key = QString::fromStdString(tag).contains(search_key, Qt::CaseInsensitive);
-						if (has_key) {
-							break;
-						}
-					}
+					has_key = QString::fromStdString(value).contains(keyword, Qt::CaseInsensitive);
 					if (has_key) {
 						break;
 					}
 				}
 			}
+
+			if (!has_key) {
+				has_keywords = false;
+				break;
+			}
 		}
 
-		if (has_key) {
-			names_to_uuids[name].push_back(uuid);
+		if (has_keywords) {
+			filteredService[uuid] = service.second;
+			count++;
+		}
+	}
+
+	std::set<QString> uniqueNames;
+
+	for (const auto& name_uuid : filteredService) {
+		QString name = QString::fromStdString(name_uuid.second.name());
+		if (!uniqueNames.count(name)) {
+			uniqueNames.insert(name);
+			ui->listWidget_name->addItem(name);
 		}
 	}
 
-	for (const auto& name_uuid_pair : names_to_uuids) {
-		QString name = QString::fromStdString(name_uuid_pair.first);
-		ui->listWidget_name->addItem(name);
-
-		for (const std::string& uuid : name_uuid_pair.second) {
-			ui->listWidget_uuid->addItem(QString::fromStdString(uuid));
-		}
+	for (const auto& name_uuid : filteredService) {
+		ui->listWidget_uuid->addItem(QString::fromStdString(name_uuid.first));
 	}
+
+	ui->lcdNumber->display(count);
+
+	this->processform();
 }
-
 
 void Form::on_listWidget_uuid_currentRowChanged(int currentRow)
 {
+
 	if (!ui->listWidget_uuid->currentItem()) {
 		return;
 	}
-	auto channel = grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
-	auto stub = Registry::NewStub(channel);
-	ListRequest request;
-	ClientContext context;
-	ListResponse response;
-	Status status = stub->ListServices(&context, request, &response);
+
 	QString uuid = ui->listWidget_uuid->currentItem()->text();
+	ui->listWidget_ep->clear();
+	ui->listWidget_meta->clear();
+	ui->listWidget_tag->clear();
+	int count = 0;
+	for (const auto& service : filteredService) {
+		if (service.first != uuid.toStdString()) {
+			continue;
+		}
 
-	ui->textEdit_meta->clear();
-	std::map<std::string, std::string> device = devices_map[uuid.toStdString()];
-	for(const servicecheck::Service& service: response.services()){
-		std::string name = service.name();
-		for (auto it = device.begin(); it != device.end(); ++it) {
-			std::string key = it->first;
-			std::string value = it->second;
-			if(key == "app"){
-				ui->textEdit_meta->append("Service Name: " + QString::fromStdString(value));
-				ui->textEdit_meta->append("\n\nMeta Data : \n");
-			}
-			if(key == "tag"){
-				ui->textEdit_tag->setText(QString::fromStdString(value));
-			}
-
-
-			QString item = QString::fromStdString(key) + ": " + QString::fromStdString(value);
-			if(key != "app" && key!= "tag"){
-				ui->textEdit_meta->append(item);
+		for (const auto& it : allservices) {
+			if (it.first == uuid.toStdString()) {
+				for (const auto& ep_it : it.second.endpoints()) {
+					const std::string& endpointName = ep_it.first;
+					const servicecheck::Endpoint& endpoint = ep_it.second;
+					ui->listWidget_ep->addItem(QString::fromStdString(endpointName));
+					ui->listWidget_ep->addItem(QString::fromStdString(endpoint.ipaddress()) + ":" + QString::number(endpoint.port()));
+				}
+				break;
 			}
 		}
+
+		count++;
+
+		for (const auto& meta_it : service.second.meta()) {
+			std::string key = meta_it.first;
+			std::string value = meta_it.second;
+
+			QString item = QString::fromStdString(key) + ": " + QString::fromStdString(value);
+			if (key != "app" && key != "tag") {
+				ui->listWidget_meta->addItem(item);
+			}
+		}
+
+		for (auto tag_it = service.second.tags().begin(); tag_it != service.second.tags().end(); tag_it++) {
+			for (auto tag_ite = tag_it->begin(); tag_ite != tag_it->end(); tag_ite++) {
+				ui->listWidget_tag->addItem(QString::fromStdString(tag_ite.base()));
+				break;
+			}
+		}
+		ui->textEdit_status->clear();
+		int error_code = service.second.status().errorcode();
+		if(error_code == 0) {
+			ui->textEdit_status->append("RUNNING");
+		}
+		else if (error_code == 1) {
+			ui->textEdit_status->append("WARNING");
+		}
+		else if (error_code == 2) {
+			ui->textEdit_status->append("CRITICAL");
+		}
+		ui->textEdit_state->clear();
+		for (auto it = service.second.status().metadata().begin() ; it != service.second.status().metadata().end() ; it++) {
+			ui->textEdit_state->append(QString::fromStdString(it->second));
+		}
+
 		break;
 	}
 
 }
 
-void Form::on_pushButton_meta_clicked()
+void Form::on_lineEdit_connect_editingFinished()
 {
-	auto channel = grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
-	auto stub = Registry::NewStub(channel);
-	ListRequest request;
-	ClientContext context;
-	ListResponse response;
-	Status status = stub->ListServices(&context, request, &response);
+	ui->listWidget_meta->clear();
+	ui->textEdit_status->clear();
+	ui->listWidget_ep->clear();
+	ui->listWidget_tag->clear();
+	ui->listWidget_name->clear();
+	ui->textEdit_nodename->clear();
+	ui->listWidget_uuid->clear();
+	QString connect = ui->lineEdit_connect->text();
+	target = connect.toStdString();
+	if(!ui->lineEdit_connect->text().isEmpty()){
 
-	ui->textEdit_meta->append(" ");
-	for(const servicecheck::Service& service: response.services()){
-		for (auto it = service.meta().begin(); it != service.meta().end(); ++it) {
-			ui->textEdit_meta->append(QString::fromStdString(it->first + ": " + it->second));
+		write_ipaddress();
+		take_ipaddress();
+	}
+}
+
+void Form::processform()
+{
+	// TODO:
+	ui->listWidget_meta->clear();
+	ui->textEdit_status->clear();
+	ui->listWidget_ep->clear();
+	ui->listWidget_tag->clear();
+	ui->listWidget_name->clear();
+	ui->textEdit_nodename->clear();
+	ui->listWidget_uuid->clear();
+	QString s = ui->lineEdit_services->text();
+	filterServices(s);
+	QSet<QString> names;
+	QStringList nodes;
+	QSet<QString> statuss;
+	for(const auto& s: filteredService) {
+		names.insert(QString::fromStdString(s.second.name()));
+		ui->listWidget_uuid->addItem(QString::fromStdString(s.first));
+		QString nodeName = QString::fromStdString(s.second.node().name());
+		if(!nodes.contains(nodeName)){
+			ui->textEdit_nodename->append(QString::fromStdString(s.second.node().name()));
+			ui->textEdit_nodename->append(QString::fromStdString(s.second.node().nodeuuid()));
+			nodes.append(QString::fromStdString(s.second.node().name()));
+		}
+		for (auto it = s.second.status().metadata().begin(); it != s.second.status().metadata().end(); it++) {
+			QString statusName = QString::number(s.second.status().errorcode());
+			if (ui->comboBox->findText(statusName) == -1) {
+				ui->comboBox->addItem(statusName);
+				statuss.insert(statusName);
+			}
+		}
+	}
+	ui->listWidget_name->addItems(names.values());
+}
+
+void Form::filterServices(QString s)
+{
+	filteredService.clear();
+
+	if (s.isEmpty())
+		filteredService = allservices;
+	else {
+		QStringList keywords = s.split(" & ");
+
+		for (const auto& sp: allservices) {
+			bool has_keywords = true;
+
+			for (const QString& keyword : keywords) {
+				bool has_key = false;
+				const std::string& name = sp.second.name();
+				const std::string& uuid = sp.first;
+
+				has_key = QString::fromStdString(name).contains(keyword, Qt::CaseInsensitive) ||
+						QString::fromStdString(uuid).contains(keyword, Qt::CaseInsensitive);
+
+				if (!has_key) {
+					for (const auto& meta : sp.second.meta()) {
+						const std::string& key = meta.first;
+						const std::string& value = meta.second;
+						has_key = QString::fromStdString(key).contains(keyword, Qt::CaseInsensitive) ||
+								QString::fromStdString(value).contains(keyword, Qt::CaseInsensitive);
+						if (has_key)
+							break;
+					}
+					if (!has_key) {
+						for (const auto& tag : sp.second.tags()) {
+							for (auto t = tag.begin() ; t != tag.end() ; t++) {
+								has_key = QString::fromStdString(t.base()).contains(keyword, Qt::CaseInsensitive);
+								if (has_key)
+									break;
+							}
+							if (has_key)
+								break;
+						}
+					}
+				}
+				if (!has_key) {
+					has_keywords = false;
+					break;
+				}
+			}
+			if (has_keywords)
+				filteredService.insert(sp);
 		}
 	}
 }
+
+void Form::on_comboBox_activated(int index)
+{
+	QString selectedError = ui->comboBox->itemText(index);
+	filteredService.clear();
+
+	for (const auto& service : allservices) {
+		int error_code = service.second.status().errorcode();
+		if (error_code == selectedError.toInt()) {
+			filteredService[service.first] = service.second;
+		}
+	}
+
+	ui->listWidget_name->clear();
+	ui->listWidget_uuid->clear();
+	ui->listWidget_meta->clear();
+	ui->listWidget_tag->clear();
+	ui->listWidget_ep->clear();
+
+	QSet<QString> names;
+	for (const auto& s : filteredService) {
+		names.insert(QString::fromStdString(s.second.name()));
+		ui->listWidget_uuid->addItem(QString::fromStdString(s.first));
+	}
+
+	ui->listWidget_name->addItems(names.values());
+}
+
+void Form::on_listWidget_meta_currentRowChanged(int currentRow)
+{
+	ui->lineEdit_services->clear();
+	QListWidgetItem* currentItem = ui->listWidget_meta->currentItem();
+	if (currentItem != nullptr) {
+		QString meta = currentItem->text();
+		QString newString_value = meta.mid(meta.indexOf(": ") + 2);
+		QApplication::clipboard()->setText(newString_value);
+
+	}
+}
+
+void Form::on_listWidget_tag_currentRowChanged(int currentRow)
+{
+	ui->lineEdit_services->clear();
+	QListWidgetItem* currentItem = ui->listWidget_tag->currentItem();
+	if (currentItem != nullptr) {
+		QString tag = currentItem->text();
+		QApplication::clipboard()->setText(tag);
+	}
+}
+
+
+void Form::on_listWidget_ep_currentRowChanged(int currentRow)
+{
+	ui->lineEdit_services->clear();
+	QListWidgetItem* currentItem = ui->listWidget_ep->currentItem();
+	if(currentItem != nullptr) {
+		QString ep = currentItem->text();
+		QApplication::clipboard()->setText(ep);
+	}
+}
+
+void Form::applyFilters()
+{
+	ui->listWidget_uuid->clear();
+	ui->listWidget_name->clear();
+	int count = 0;
+	for (const auto& service : filteredService) {
+		ui->listWidget_uuid->addItem(QString::fromStdString(service.first));
+
+		QString name = QString::fromStdString(service.second.name());
+		if (!ui->listWidget_name->findItems(name, Qt::MatchExactly).isEmpty()) {
+			continue;
+		}
+
+		ui->listWidget_name->addItem(name);
+		count++;
+	}
+
+	ui->lcdNumber->display(count);
+}
+
+void Form::write_ipaddress()
+{
+	std::ofstream take_ip("ip.txt", std::ios::out | std::ios::app);
+	if (take_ip.is_open()) {
+		if(!ui->lineEdit_connect->text().isEmpty()){
+		take_ip << ui->lineEdit_connect->text().toStdString() << std::endl;
+		take_ip.close();
+		take_ipaddress();
+		}
+	}
+}
+
+void Form::take_ipaddress()
+{
+	std::ifstream ip_file("ip.txt");
+	std::string ip;
+
+	while (std::getline(ip_file, ip))
+	{
+		if (ui->comboBox_ip->findText(QString::fromStdString(ip)) == -1) {
+			ui->comboBox_ip->addItem(QString::fromStdString(ip));
+		}
+	}
+
+	ip_file.close();
+
+}
+
+void Form::on_comboBox_ip_currentTextChanged(const QString &arg1)
+{
+	target = arg1.toStdString();
+}
+
+void Form::on_listWidget_meta_itemDoubleClicked(QListWidgetItem *item)
+{
+	ui->lineEdit_services->clear();
+	QListWidgetItem* currentItem = item;
+	if (currentItem != nullptr) {
+		QString meta = currentItem->text();
+		QString newString_value = meta.mid(meta.indexOf(": ") + 2);
+		ui->lineEdit_services->setText(newString_value);
+		filterServices(newString_value);
+		applyFilters();
+
+	}
+}
+
+void Form::on_listWidget_tag_itemDoubleClicked(QListWidgetItem *item)
+{
+	ui->lineEdit_services->clear();
+	QListWidgetItem* currentItem = item;
+	if(currentItem != nullptr) {
+		QString tag = currentItem->text();
+		ui->lineEdit_services->setText(tag);
+		filterServices(tag);
+		applyFilters();
+	}
+}
+
+void Form::on_listWidget_ep_itemDoubleClicked(QListWidgetItem *item)
+{
+	ui->lineEdit_services->clear();
+	QListWidgetItem* currentItem = item;
+	if(currentItem != nullptr) {
+		QString ep = currentItem->text();
+		ui->lineEdit_services->setText(ep);
+		filterServices(ep);
+		applyFilters();
+	}
+}
+
