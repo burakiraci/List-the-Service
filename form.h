@@ -14,6 +14,7 @@
 #include "listservices.pb.h"
 #include "listservices.grpc.pb.h"
 #include <QListWidget>
+#include <QAction>
 
 using grpc::Channel;
 using grpc::ClientContext;
@@ -55,16 +56,12 @@ private slots:
 	void on_lineEdit_connect_editingFinished();
 
 	void processform();
-//	void on_comboBox_currentIndexChanged(int index);
 
 	void on_comboBox_activated(int index);
 
 	void on_listWidget_meta_currentRowChanged(int currentRow);
 
-	void on_listWidget_tag_currentRowChanged(int currentRow);
 	void applyFilters();
-
-	void on_listWidget_ep_currentRowChanged(int currentRow);
 
 	void write_ipaddress();
 
@@ -79,6 +76,17 @@ private slots:
 
 	void on_listWidget_ep_itemDoubleClicked(QListWidgetItem *item);
 
+	void on_listWidget_meta_customContextMenuRequested(const QPoint &pos);
+
+	void copySelectedItemText();
+
+	void on_listWidget_tag_currentRowChanged(int currentRow);
+
+	void on_listWidget_tag_customContextMenuRequested(const QPoint &pos);
+
+	void on_listWidget_ep_currentRowChanged(int currentRow);
+
+	void on_listWidget_ep_customContextMenuRequested(const QPoint &pos);
 signals:
 	void updateform();
 
@@ -87,10 +95,11 @@ private:
 	std::map<std::string, servicecheck::Service> filteredService;
 	std::map<std::string, servicecheck::Service> errorService;
 	std::unique_ptr<servicecheck::Registry::Stub> stub_;
-//	std::string target = "10.5.190.206:3456";
+	//	std::string target = "10.5.190.206:3456";
 	std::string target = "";
 	void filterServices(QString s);
-
+	QAction *copyAction;
+	QMenu* contextMenu;
 };
 
 #endif // FORM_H

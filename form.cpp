@@ -1,3 +1,4 @@
+
 #include <fstream>
 #include "form.h"
 #include "ui_form.h"
@@ -5,6 +6,11 @@
 #include <QDebug>
 #include <QSet>
 #include <QClipboard>
+#include <QMenu>
+#include <QMouseEvent>
+#include <QApplication>
+#include <QClipboard>
+
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
@@ -23,6 +29,9 @@ Form::Form(QWidget *parent) :
 	connect(this, &Form::updateform, this, &Form::processform);
 	write_ipaddress();
 	take_ipaddress();
+	contextMenu = new QMenu(this);
+	copyAction = new QAction("Copy" , this);
+	connect(copyAction, &QAction::triggered, this, &Form::copySelectedItemText);
 }
 
 Form::~Form()
@@ -30,7 +39,8 @@ Form::~Form()
 	delete ui;
 }
 
-void Form::on_pushButtonListServices_clicked() {
+void Form::on_pushButtonListServices_clicked()
+{
 	take_ipaddress();
 	ListRequest request;
 	ClientContext context;
@@ -210,7 +220,6 @@ void Form::on_listWidget_uuid_currentRowChanged(int currentRow)
 
 		break;
 	}
-
 }
 
 void Form::on_lineEdit_connect_editingFinished()
@@ -345,38 +354,6 @@ void Form::on_comboBox_activated(int index)
 	ui->listWidget_name->addItems(names.values());
 }
 
-void Form::on_listWidget_meta_currentRowChanged(int currentRow)
-{
-	ui->lineEdit_services->clear();
-	QListWidgetItem* currentItem = ui->listWidget_meta->currentItem();
-	if (currentItem != nullptr) {
-		QString meta = currentItem->text();
-		QString newString_value = meta.mid(meta.indexOf(": ") + 2);
-		QApplication::clipboard()->setText(newString_value);
-
-	}
-}
-
-void Form::on_listWidget_tag_currentRowChanged(int currentRow)
-{
-	ui->lineEdit_services->clear();
-	QListWidgetItem* currentItem = ui->listWidget_tag->currentItem();
-	if (currentItem != nullptr) {
-		QString tag = currentItem->text();
-		QApplication::clipboard()->setText(tag);
-	}
-}
-
-
-void Form::on_listWidget_ep_currentRowChanged(int currentRow)
-{
-	ui->lineEdit_services->clear();
-	QListWidgetItem* currentItem = ui->listWidget_ep->currentItem();
-	if(currentItem != nullptr) {
-		QString ep = currentItem->text();
-		QApplication::clipboard()->setText(ep);
-	}
-}
 
 void Form::applyFilters()
 {
@@ -403,9 +380,9 @@ void Form::write_ipaddress()
 	std::ofstream take_ip("ip.txt", std::ios::out | std::ios::app);
 	if (take_ip.is_open()) {
 		if(!ui->lineEdit_connect->text().isEmpty()){
-		take_ip << ui->lineEdit_connect->text().toStdString() << std::endl;
-		take_ip.close();
-		take_ipaddress();
+			take_ip << ui->lineEdit_connect->text().toStdString() << std::endl;
+			take_ip.close();
+			take_ipaddress();
 		}
 	}
 }
@@ -468,4 +445,82 @@ void Form::on_listWidget_ep_itemDoubleClicked(QListWidgetItem *item)
 		applyFilters();
 	}
 }
+
+void Form::on_listWidget_meta_currentRowChanged(int currentRow)
+{
+	ui->listWidget_meta->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(ui->listWidget_meta, &QListWidget::customContextMenuRequested,
+			this, &Form::on_listWidget_meta_customContextMenuRequested);
+}
+
+void Form::on_listWidget_meta_customContextMenuRequested(const QPoint &pos)
+{
+	QPoint globalPos = ui->listWidget_meta->mapToGlobal(pos);
+	contextMenu->addAction(copyAction);
+	contextMenu->exec(globalPos);
+	contextMenu->close();
+}
+
+void Form::copySelectedItemText()
+{
+	QListWidgetItem *item_meta = ui->listWidget_meta->currentItem();
+	if (item_meta != nullptr) {
+		QString text = item_meta->text();
+		int index = text.indexOf(": ");
+		if(index != -1) {
+			text = text.mid(index +2);
+		}
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText(text);
+	}
+
+	QListWidgetItem *item_tag = ui->listWidget_tag->currentItem();
+	if(item_tag != nullptr) {
+		QString text = item_tag->text();
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText(text);
+	}
+
+	QListWidgetItem *item_ep = ui->listWidget_ep->currentItem();
+	if(item_ep != nullptr) {
+		QString text = item_ep->text();
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText(text);
+	}
+}
+
+void Form::on_listWidget_tag_currentRowChanged(int currentRow)
+{
+	ui->listWidget_tag->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(ui->listWidget_tag, &QListWidget::customContextMenuRequested,
+			this, &Form::on_listWidget_tag_customContextMenuRequested);
+}
+
+void Form::on_listWidget_tag_customContextMenuRequested(const QPoint &pos)
+{
+	QPoint globalPos = ui->listWidget_tag->mapToGlobal(pos);
+	contextMenu->addAction(copyAction);
+	contextMenu->exec(globalPos);
+	contextMenu->close();
+}
+
+
+
+
+void Form::on_listWidget_ep_currentRowChanged(int currentRow)
+{
+	ui->listWidget_ep->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(ui->listWidget_ep, &QListWidget::customContextMenuRequested,
+			this, &Form::on_listWidget_ep_customContextMenuRequested);
+}
+
+void Form::on_listWidget_ep_customContextMenuRequested(const QPoint &pos)
+{
+	QPoint globalPos = ui->listWidget_ep->mapToGlobal(pos);
+	contextMenu->addAction(copyAction);
+	contextMenu->exec(globalPos);
+	contextMenu->close();
+}
+
+
 
